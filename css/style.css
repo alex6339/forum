@@ -1,0 +1,127 @@
+# 创建新帖子
+@app.route('/posts', methods=['POST'])
+@jwt_required()
+def create_post():
+    current_user = get_jwt_identity()
+    data = request.get_json()
+    
+    new_post = Post(
+        user_id=current_user,
+        title=data['title'],
+        content=data['content'],
+        category_id=data.get('category_id', 1),
+        creation_date=datetime.utcnow()
+    )
+    
+    db.session.add(new_post)
+    db.session.commit()
+    
+    return jsonify({
+        'message': '帖子创建成功',
+        'post_id': new_post.post_id
+    }), 201
+
+# 获取帖子列表
+@app.route('/posts', methods=['GET'])
+def get_posts():
+    page = request.args.get('page', 1, type=int)
+    per_page = request.args.get('per_page', 10, type=int)
+    category_id = request.args.get('category_id', type=int)
+    
+    query = Post.query
+    
+    if category_id:
+        query = query.filter_by(category_id=category_id)
+    
+    paginated_posts = query.order_by(Post.creation_date.desc()).paginate(
+        page=page, per_page=per_page, error_out=False)
+    
+    posts = [{
+        'post_id': post.post_id,
+        'title': post.title,
+        'user_id': post.user_id,
+        'creation_date': post.creation_date.isoformat(),
+        'view_count': post.view_count,
+        'comment_count': len(post.comments)
+    } for post in paginated_posts.items]
+    
+    return jsonify({
+        'posts': posts,
+        'total': paginated_posts.total,
+        'pages': paginated_posts.pages,
+        'current_page': page
+    })
+
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+}
+
+body {
+    font-family: Arial, sans-serif;
+    line-height: 1.6;
+    background-color: #f4f4f4;
+}
+
+.container {
+    max-width: 800px;
+    margin: 50px auto;
+    padding: 20px;
+}
+
+.auth-container {
+    background: white;
+    padding: 20px;
+    border-radius: 8px;
+    box-shadow: 0 0 10px rgba(0,0,0,0.1);
+}
+
+.tabs {
+    display: flex;
+    margin-bottom: 20px;
+    border-bottom: 1px solid #ddd;
+}
+
+.tab-btn {
+    padding: 10px 20px;
+    border: none;
+    background: none;
+    cursor: pointer;
+    font-size: 16px;
+}
+
+.tab-btn.active {
+    border-bottom: 2px solid #007bff;
+    color: #007bff;
+}
+
+.form-group {
+    margin-bottom: 15px;
+}
+
+label {
+    display: block;
+    margin-bottom: 5px;
+}
+
+input {
+    width: 100%;
+    padding: 8px;
+    border: 1px solid #ddd;
+    border-radius: 4px;
+}
+
+button[type="submit"] {
+    background: #007bff;
+    color: white;
+    padding: 10px 20px;
+    border: none;
+    border-radius: 4px;
+    cursor: pointer;
+    width: 100%;
+}
+
+button[type="submit"]:hover {
+    background: #0056b3;
+}
